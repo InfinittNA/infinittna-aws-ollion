@@ -1,0 +1,21 @@
+name: Get Caller Identity Test Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get_caller_identity:
+    name: Get Caller Identity
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials from Test account
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHub_Actions_Role_Terraform_DCC_Demo
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Fetch the caller identity
+        run: |
+          aws sts get-caller-identity

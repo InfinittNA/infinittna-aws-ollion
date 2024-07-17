@@ -1,0 +1,195 @@
+name: Infinitt Example OIDC Workflow
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths: ["terraform/**"]
+  push:
+    branches: [main]
+    paths: ["terraform/**"]
+
+jobs:
+  networking:
+    name: Terraform AWS Infinitt Networking
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform/env/networking
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Current working dir and Repo name
+        run: |
+          pwd
+          echo "repo_name=${{github.repository}}" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials from Test account
+        id: get_caller_identity
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHub_Actions_Role_Terraform
+          aws-region: ${{ secrets.AWS_REGION }}
+          output-credentials: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          # Disable the setup-terraform wrapper and pass outputs using files instead.
+          # This is to accommodate very large Terraform plan and apply outputs.
+          terraform_wrapper: false
+          terraform_version: ${{ secrets.terraform_version }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config=dev.conf
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request'
+        run: |
+          terraform plan -no-color -var-file=env-var-ca-central1-dev.tfvars 2>&1 | tee /tmp/tfplan.txt
+
+          # Remove lines showing TF state refreshes to reduce file size:
+          sed -i '/Refreshing state.../d' /tmp/tfplan.txt
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // 1. Retrieve existing bot comments for the PR
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
+            })
+
+            // 2. Prepare format of the comment
+            const fs = require("fs");
+            const plan = fs.readFileSync("/tmp/tfplan.txt", "utf8");
+            const output = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${ plan }
+            \`\`\`
+
+            </details>
+
+            Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`,Workflow: \`${{ github.workflow }}`;
+
+            // 3. If we have a comment, update it, otherwise create a new one
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              })
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              })
+            }
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Terraform Apply
+        id: apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          # Write TF Apply output to a file:
+          terraform apply -var-file=env-var-ca-central1-dev.tfvars -auto-approve -no-color 2>&1 | tee /tmp/tfapply.txt
+
+          # Remove lines showing TF state refreshes to reduce file size:
+          sed -i '/Refreshing state.../d' /tmp/tfapply.txt
+
+          # Remove any TF Outputs at the end to reduce file size:
+          sed -i '/Outputs/Q' /tmp/tfapply.txt
+
+      - name: Get Pull Request Number
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: jwalton/gh-find-current-pr@v1
+        id: getPRnumber
+        with:
+          # Can be "open", "closed", or "all".  Defaults to "open".
+          state: all
+
+      - name: Update Pull Request with Terraform Apply
+        if: success() && steps.getPRnumber.outputs.number
+        env:
+          PR_ISSUE_NUMBER: ${{ steps.getPRnumber.outputs.pr }}
+        run: |
+          echo "The PR number is: $PR_ISSUE_NUMBER"
+
+          tf_apply_output=$(cat /tmp/tfapply.txt)
+
+          # Create the initial body for the comment:
+          escaped_body="<details><summary>Show Terraform Apply:</summary>\n\n\`\`\`\n${tf_apply_output} \n\`\`\`\n</details>\n\n Merged by @${{ github.actor }}. Workflow: \`${{ github.workflow }}\` "
+
+          # Un-escape comment body so it retains \n:
+          printf -v unescaped_body %b "$escaped_body"
+
+          # Use jq to construct JSON input to curl:
+          jq_comment_body=$(jq --null-input -M \
+            --arg body "$unescaped_body" \
+            '{"body": $body}' \
+          )
+
+          # Post comment to PR using the GitHub API:
+          curl -s \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ env.repo_name }}/issues/$PR_ISSUE_NUMBER/comments" \
+            -d "${jq_comment_body}"

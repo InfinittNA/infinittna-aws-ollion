@@ -1,0 +1,94 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+repos:
+  # OLLION Security TruffleHog
+  - repo: local
+    hooks:
+      - id: trufflehog
+        name: TruffleHog
+        description: Detect secrets in your data.
+        entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update'
+        language: system
+        stages: ["commit", "push"]
+
+  # BASIC CONF FOR ALL PRE-COMMITS REPO TYPE
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [commit]
+      - id: end-of-file-fixer
+        exclude: /secrets
+        stages: [commit]
+      - id: check-added-large-files
+        stages: [commit]
+      - id: check-yaml
+        args:
+          - "--allow-multiple-documents"
+        exclude: /templates|/secrets
+        stages: [commit]
+      - id: check-json
+        stages: [commit]
+      - id: check-toml
+        stages: [commit]
+      - id: check-shebang-scripts-are-executable
+        stages: [commit]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+
+  # SPECIFIC CONF FOR TERRAFORM MODULE REPOSITORIES
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.90.0
+    hooks:
+      - id: terraform_fmt
+        args:
+          - --args=-diff
+          - --args=-write=true
+        stages: [commit]
+      - id: terraform_docs
+        stages: [commit]
+      - id: terraform_tflint
+        files: \.tf$
+        args:
+          - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
+        stages: [commit]
+      - id: terraform_tfsec
+        files: \.tf$
+        args:
+          - >
+            --args=--config-file=__GIT_WORKING_DIR__/.tfsec.yml
+            --var-file tests/terraform.tfvars
+        stages: [commit]
+
+  # Infracost for Infrastructure as Code cost estimation on Infra
+  - repo: local
+    hooks:
+      - id: infracost_infra
+        name: Infracost
+        description: Infrastructure cost estimates for Terraform
+        entry: bash -c 'infracost breakdown --no-color --show-skipped --path=./terraform/env/networking --format table --out-file=infrastructure-cost-breakdown.txt'
+        # entry: bash -c 'infracost --no-color --tfdir . --tfplan infracost.plan --format json > infracost-output.json'
+        language: system
+        stages: [commit]
+
+  # Infracost for Infrastructure as Code cost estimation on Application
+  - repo: local
+    hooks:
+      - id: infracost_app
+        name: Infracost
+        description: Application cost estimates for Terraform
+        entry: bash -c 'infracost breakdown --no-color --show-skipped --path=./terraform/env/application --format table --out-file=application-cost-breakdown.txt'
+        # entry: bash -c 'infracost --no-color --tfdir . --tfplan infracost.plan --format json > infracost-output.json'
+        language: system
+        stages: [commit]
