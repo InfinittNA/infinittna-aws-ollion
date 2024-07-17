@@ -1,4 +1,4 @@
-name: Infinitt Example OIDC Workflow
+name: Infinitt Networking OIDC Workflow
 
 on:
   workflow_dispatch:

@@ -1,12 +1,20 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
 Description: GitHub OIDC for when GitHub wants to communicate with AWS.
+# Add parameter to change the target condition for the parent repo.
+Parameters:
+  GitHubParentRepoName:
+    Type: String
+    Description: The name of the GitHub repo parent that will be allowed to assume the role and is case sensative.
+    Default: ollionorg
+    AllowedPattern: "[a-zA-Z0-9_-]+"
+    ConstraintDescription: "Must be a valid GitHub repo name."
 Resources:
   # This is the bare-bones role.
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: GitHub_Actions_Role_Terraform
+      RoleName: GitHub_Actions_Role_Terraform_DCC_Demo
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -16,8 +24,8 @@ Resources:
             Action: sts:AssumeRoleWithWebIdentity
             Condition:
               StringLike:
-                ## THESE ARE CASE SENSITIVE!
-                "token.actions.githubusercontent.com:sub": ["repo:ollionorg/*"]
+                # This is the GitHub repo that will be allowed to assume the role it is case sensative.
+                "token.actions.githubusercontent.com:sub": "repo:${GitHubParentRepoName}/*"
               StringEqualsIgnoreCase:
                 "token.actions.githubusercontent.com:aud": sts.amazonaws.com
       Policies:
@@ -40,7 +48,7 @@ Resources:
                   - "*"
                 Resource: "*"
 
-  # This is the OIDC provider hookup itself. This tells AWS to delegate authN GitHub
+  # This is the OIDC provider hookup itself. This tells AWS to delegate auth GitHub
   GitHubActionsOidcProvider:
     Type: AWS::IAM::OIDCProvider
     Properties:
@@ -49,3 +57,71 @@ Resources:
       ThumbprintList:
         - 6938fd4d98bab03faadb97b34396831e3780aea1
       Url: https://token.actions.githubusercontent.com
+
+  # Add Terraform S3 bucket for state storage.
+  TerraformStateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "terraform-state-${AWS::AccountId}-${AWS::Region}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: TerraformStateBucket
+        - Key: Owner
+          Value: GitHubActions
+        - Key: Repo
+          Value: !Ref GitHubParentRepoName
+  
+  # Add Terraform DynamoDB table for state locking.
+  TerraformStateLockTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "terraform-state-lock-${AWS::AccountId}-${AWS::Region}"
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      Tags:
+        - Key: Name
+          Value: TerraformStateLockTable
+        - Key: Owner
+          Value: GitHubActions
+        - Key: Repo
+          Value: !Ref GitHubParentRepoName
+
+Outputs:
+  Region:
+    Description: The region in which the stack was created.
+    Value: !Ref "AWS::Region"
+  GitHubActionsRoleArn:
+    Description: The ARN of the GitHub Actions role.
+    Value: !GetAtt GitHubActionsRole.Arn
+  GitHubActionsOidcProviderArn:
+    Description: The ARN of the GitHub Actions OIDC provider.
+    Value: !GetAtt GitHubActionsOidcProvider.Arn
+  TerraformStateBucketArn:
+    Description: The ARN of the Terraform state bucket.
+    Value: !GetAtt TerraformStateBucket.Arn
+  TerraformStateBucketQuickAccessURL:
+    Description: The URL of the Terraform state bucket.
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/s3/buckets/${TerraformStateBucket}/?region=${AWS::Region}&bucketType=general&tab=objects"
+  TerraformStateLockTableArn:
+    Description: The ARN of the Terraform state lock table.
+    Value: !GetAtt TerraformStateLockTable.Arn
+  TerraformStateLockTableName:
+    Description: The name of the Terraform state lock table.
+    Value: !Ref TerraformStateLockTable
+  TerraformStateLockTableQuickAccessURL:
+    Description: The URL of the Terraform state lock table.
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/dynamodbv2/home?region=${AWS::Region}#item-explorer?maximize=true&operation=SCAN&table=${TerraformStateLockTable}"
