@@ -14,7 +14,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: GitHub_Actions_Role_Terraform_DCC_Demo
+      RoleName: Infinitt_GitHub_Actions_Role_Terraform
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -25,7 +25,7 @@ Resources:
             Condition:
               StringLike:
                 # This is the GitHub repo that will be allowed to assume the role it is case sensative.
-                "token.actions.githubusercontent.com:sub": "repo:${GitHubParentRepoName}/*"
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubParentRepoName}/*"
               StringEqualsIgnoreCase:
                 "token.actions.githubusercontent.com:aud": sts.amazonaws.com
       Policies:
