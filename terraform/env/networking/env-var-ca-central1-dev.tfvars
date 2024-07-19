@@ -1,8 +1,8 @@
 environment                      = "dev"
 region                           = "ca-central-1"
-state_bucket                     = "dcc-terraform-state-bucket-20240703132841861500000001"
+state_bucket                     = "terraform-state-270129723225-ca-central-1"
 state_bucket_key_path            = "states/tf-infinitt-app-poc/application/terraform.tfstate"
-dynamodb_table                   = "dcc-terraform-state-lock"
+dynamodb_table                   = "terraform-state-lock-270129723225-ca-central-1"
 vpc_cidr_block                   = "10.0.0.0/16"
 vpc_public_subnets               = ["10.0.0.0/23", "10.0.2.0/23", "10.0.4.0/23"]
 vpc_public_subnet_names          = ["Public Subnet One", "Public Subnet Two", "Public Subnet Three"]
@@ -20,9 +20,9 @@ fsx_file_system_name             = "infinitt-file-system"
 fsx_deployment_type              = "SINGLE_AZ_2"
 fsx_storage_type                 = "SSD"
 ad_manager_instance_type         = "t3a.large"
-ad_manager_instance_ec2_key_name = "dcc-test"
+ad_manager_instance_ec2_key_name = "Infinitt-CA-Central-Test-Key"
 tags = {
   ApplicationName = "poc-infinitt"
-  GithubRepo      = "ollion-ps-na-tf-infinit-app-poc"
-  GithubOrg       = "OllionOrg"
+  GithubRepo      = "infinittna-aws-ollion"
+  GithubOrg       = "pboleski1"
 }
