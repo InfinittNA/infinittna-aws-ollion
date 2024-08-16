@@ -6,7 +6,7 @@ Parameters:
   GitHubParentRepoName:
     Type: String
     Description: The name of the GitHub repo parent that will be allowed to assume the role and is case sensative.
-    Default: pboleski1
+    Default: InfinittNA
     AllowedPattern: "[a-zA-Z0-9_-]+"
     ConstraintDescription: "Must be a valid GitHub repo name."
 Resources:
