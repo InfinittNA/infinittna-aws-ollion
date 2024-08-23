@@ -24,6 +24,6 @@ ad_manager_instance_ec2_key_name = "Infinitt-CA-Central-Test-Key"
 tags = {
   ApplicationName = "poc-infinitt"
   GithubRepo      = "infinittna-aws-ollion"
-  GithubOrg       = "pboleski1"
+  GithubOrg       = "InfinittNA"
 }
 
