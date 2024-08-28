@@ -14,7 +14,7 @@ jobs:
       - name: Configure AWS credentials from Test account
         uses: aws-actions/configure-aws-credentials@v3
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHub_Actions_Role_Terraform_DCC_Demo
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/Infinitt_GitHub_Actions_Role_Terraform
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Fetch the caller identity
         run: |
