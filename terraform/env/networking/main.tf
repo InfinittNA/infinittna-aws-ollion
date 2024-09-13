@@ -29,6 +29,7 @@ module "fsx" {
   fsx_file_system_name             = var.fsx_file_system_name
   fsx_deployment_type              = var.fsx_deployment_type
   fsx_storage_type                 = var.fsx_storage_type
+  fsx_storage_capacity             = var.fsx_storage_capacity
   ad_manager_instance_type         = var.ad_manager_instance_type
   ad_manager_instance_ec2_key_name = var.ad_manager_instance_ec2_key_name
   ad_manager_subnet_id             = module.networking.private_subnets[3]
