@@ -67,7 +67,7 @@ variable "fsx_deployment_type" {
 variable "fsx_storage_type" {
   type        = string
   description = "FSx storage type"
-  default     = "SSD"
+  default     = "HDD"
   validation {
     condition     = can(regex("^SSD|HDD$", var.fsx_storage_type))
     error_message = "Must be one of `SSD` or `HDD`."
