@@ -19,6 +19,7 @@ kms_key_name                     = "infinitt-fsx-key"
 fsx_file_system_name             = "infinitt-file-system"
 fsx_deployment_type              = "SINGLE_AZ_2"
 fsx_storage_type                 = "HDD"
+fsx_storage_capacity             = "2000"
 ad_manager_instance_type         = "t3a.medium"
 ad_manager_instance_ec2_key_name = "Infinitt-CA-Central-Test-Key"
 tags = {
