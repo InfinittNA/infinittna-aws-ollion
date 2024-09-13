@@ -134,6 +134,12 @@ variable "fsx_storage_type" {
   }
 }
 
+variable "fsx_storage_capacity" {
+  type        = number
+  description = "FSx Storage capacity"
+  default     = 32
+}
+
 variable "tags" {
   description = "tags to apply to all resources"
   type        = map(string)
