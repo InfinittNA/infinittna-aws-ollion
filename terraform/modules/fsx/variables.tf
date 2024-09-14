@@ -89,7 +89,7 @@ variable "fsx_storage_capacity" {
 variable "fsx_throughput_capacity" {
   type        = number
   description = "FSx throughput capacity"
-  default     = 8
+  default     = 32
 }
 
 variable "tags" {
