@@ -60,7 +60,7 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: 
+        run: |
           terraform providers
           terraform init -backend-config=dev.conf
         env:
