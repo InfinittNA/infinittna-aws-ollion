@@ -60,9 +60,7 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: |
-          terraform providers
-          terraform init -backend-config=dev.conf
+        run: terraform init -backend-config=dev.conf
         env:
           AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
           AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
