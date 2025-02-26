@@ -10,12 +10,52 @@ jobs:
     permissions:
       id-token: write
       contents: read
+strategy:
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform/env/networking
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Current working dir and Repo name
+        run: |
+          pwd
+          echo "repo_name=${{github.repository}}" >> $GITHUB_ENV
+
       - name: Configure AWS credentials from Test account
+        id: get_caller_identity
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/Infinitt_GitHub_Actions_Role_Terraform
           aws-region: ${{ secrets.AWS_REGION }}
-      - name: Fetch the caller identity
-        run: |
-          terraform providers
+          output-credentials: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          # Disable the setup-terraform wrapper and pass outputs using files instead.
+          # This is to accommodate very large Terraform plan and apply outputs.
+          terraform_wrapper: false
+          terraform_version: ${{ secrets.terraform_version }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Providers
+        id: providers
+        run: terraform providers
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
