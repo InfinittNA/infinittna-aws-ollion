@@ -51,12 +51,16 @@ jobs:
         id: fmt
         run: terraform fmt -check
         continue-on-error: true
-
-      - name: Terraform Providers
-        id: providers
-        run: terraform providers
+      
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config=dev.conf
         env:
           AWS_ACCESS_KEY_ID: ${{ steps.get_caller_identity.outputs.aws-access-key-id }}
           AWS_SECRET_ACCESS_KEY: ${{ steps.get_caller_identity.outputs.aws-secret-access-key }}
           AWS_SESSION_TOKEN: ${{ steps.get_caller_identity.outputs.aws-session-token }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Providers
+        id: providers
+        run: terraform providers
