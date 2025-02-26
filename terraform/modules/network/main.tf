@@ -10,7 +10,7 @@ locals {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.8.1"
+#  version = "5.8.1"
 
   name = "${lookup(var.tags, "ApplicationName")}-vpc"
   cidr = var.vpc_cidr_block
