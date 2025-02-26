@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  get_caller_identity:
-    name: Get Terraform Providers
+  networking:
+    name: Terraform AWS Infinitt Networking
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-strategy:
+      pull-requests: write
+    strategy:
       fail-fast: false
     defaults:
       run:
