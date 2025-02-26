@@ -70,7 +70,7 @@ jobs:
       - name: Terraform Destroy
         id: destroy
         # Prevent other users from destroy environment
-        if: github.repository_owner == 'INA-pboleski'
+        if: github.repository_owner == 'InfinittNA'
         run: |
           # Write TF Apply output to a file:
           terraform apply -destroy -var-file=env-var-ca-central1-dev.tfvars -auto-approve -no-color 2>&1 | tee /tmp/tfdestroy.txt
