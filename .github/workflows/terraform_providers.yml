@@ -1,4 +1,4 @@
-name: Get Caller Identity Test Workflow
+name: Get Terraform Providers
 
 on:
   workflow_dispatch:
